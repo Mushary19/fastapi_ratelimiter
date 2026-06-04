@@ -1,0 +1,59 @@
+# ==========================================
+# Python & FastAPI Core
+# ==========================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ==========================================
+# Environment Variables & Secrets (CRITICAL)
+# ==========================================
+.env
+.env.*
+!.env.example
+*.bak
+*.local
+
+# ==========================================
+# Dependencies & Virtual Environments
+# ==========================================
+.venv/
+venv/
+ENV/
+env/
+lib/
+lib64/
+.python-version
+
+# ==========================================
+# IDEs and Editors
+# ==========================================
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+
+# ==========================================
+# Databases & Storage
+# ==========================================
+*.db
+*.sqlite3
+data/
+uploads/
+storage/
+
+# ==========================================
+# OS Specific
+# ==========================================
+.DS_Store
+Thumbs.db
