@@ -9,6 +9,7 @@ from pydantic import BaseModel, ConfigDict
 from database import get_db
 from models import Client, ApiKey
 from datetime import datetime
+from typing import Optional
 
 router = APIRouter()
 
@@ -28,14 +29,15 @@ class RegisterResponse(BaseModel):
 
 class DroppedRequestResponse(BaseModel):
     id: int
-    client_id: int
-    api_key: str
+    client_id: Optional[int] = None
+    api_key: Optional[str] = None
     endpoint: str
     method: str
     reason: str
     created_at: datetime
 
-    model_config = ConfigDict(from_attributes=True)
+    class Config:
+        from_attributes = True
 
 
 class DroppedRequestsListResponse(BaseModel):
@@ -80,7 +82,6 @@ async def get_dropped_requests(limit: int = 50, db: AsyncSession = Depends(get_d
         select(DroppedRequest).order_by(desc(DroppedRequest.created_at)).limit(limit)
     )
     dropped = result.scalars().all()
-
     return {"total": len(dropped), "requests": dropped}
 
 

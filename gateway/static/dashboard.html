@@ -1,0 +1,951 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Rate Limiter Dashboard</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Syne:wght@400;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #0a0a0f;
+        --surface: #111118;
+        --border: #1e1e2e;
+        --accent: #00ff88;
+        --accent-dim: rgba(0, 255, 136, 0.1);
+        --accent-mid: rgba(0, 255, 136, 0.25);
+        --red: #ff3b5c;
+        --red-dim: rgba(255, 59, 92, 0.1);
+        --yellow: #ffcc00;
+        --yellow-dim: rgba(255, 204, 0, 0.1);
+        --blue: #3b82f6;
+        --blue-dim: rgba(59, 130, 246, 0.1);
+        --text: #e2e8f0;
+        --muted: #4a5568;
+        --mono: "JetBrains Mono", monospace;
+        --sans: "Syne", sans-serif;
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        background: var(--bg);
+        color: var(--text);
+        font-family: var(--mono);
+        min-height: 100vh;
+        overflow-x: hidden;
+      }
+
+      /* grid background */
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        background-image:
+          linear-gradient(rgba(0, 255, 136, 0.03) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(0, 255, 136, 0.03) 1px, transparent 1px);
+        background-size: 40px 40px;
+        pointer-events: none;
+        z-index: 0;
+      }
+
+      .container {
+        position: relative;
+        z-index: 1;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 2rem;
+      }
+
+      /* header */
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 2.5rem;
+        padding-bottom: 1.5rem;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .logo {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+      }
+
+      .logo-icon {
+        width: 40px;
+        height: 40px;
+        border: 2px solid var(--accent);
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+        color: var(--accent);
+        box-shadow: 0 0 20px rgba(0, 255, 136, 0.2);
+        animation: pulse-border 2s infinite;
+      }
+
+      @keyframes pulse-border {
+        0%,
+        100% {
+          box-shadow: 0 0 20px rgba(0, 255, 136, 0.2);
+        }
+        50% {
+          box-shadow: 0 0 30px rgba(0, 255, 136, 0.4);
+        }
+      }
+
+      .logo-text h1 {
+        font-family: var(--sans);
+        font-size: 1.3rem;
+        font-weight: 800;
+        color: var(--text);
+        letter-spacing: -0.02em;
+      }
+
+      .logo-text span {
+        font-size: 0.7rem;
+        color: var(--muted);
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+      }
+
+      .header-right {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+      }
+
+      .live-badge {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        font-size: 0.7rem;
+        color: var(--accent);
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+
+      .live-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--accent);
+        animation: blink 1.2s infinite;
+      }
+
+      @keyframes blink {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.2;
+        }
+      }
+
+      .refresh-info {
+        font-size: 0.65rem;
+        color: var(--muted);
+      }
+
+      /* stats grid */
+      .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+      }
+
+      .stat-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 1.25rem;
+        position: relative;
+        overflow: hidden;
+        transition: border-color 0.2s;
+      }
+
+      .stat-card::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 2px;
+      }
+
+      .stat-card.green::before {
+        background: var(--accent);
+      }
+      .stat-card.red::before {
+        background: var(--red);
+      }
+      .stat-card.yellow::before {
+        background: var(--yellow);
+      }
+      .stat-card.blue::before {
+        background: var(--blue);
+      }
+
+      .stat-label {
+        font-size: 0.65rem;
+        color: var(--muted);
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        margin-bottom: 0.6rem;
+      }
+
+      .stat-value {
+        font-family: var(--sans);
+        font-size: 2.2rem;
+        font-weight: 800;
+        line-height: 1;
+        margin-bottom: 0.3rem;
+      }
+
+      .stat-card.green .stat-value {
+        color: var(--accent);
+      }
+      .stat-card.red .stat-value {
+        color: var(--red);
+      }
+      .stat-card.yellow .stat-value {
+        color: var(--yellow);
+      }
+      .stat-card.blue .stat-value {
+        color: var(--blue);
+      }
+
+      .stat-sub {
+        font-size: 0.65rem;
+        color: var(--muted);
+      }
+
+      /* hammer section */
+      .actions-bar {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+        align-items: center;
+      }
+
+      .input-group {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 0.5rem 0.75rem;
+        flex: 1;
+      }
+
+      .input-group label {
+        font-size: 0.7rem;
+        color: var(--muted);
+        white-space: nowrap;
+      }
+
+      .input-group input {
+        background: transparent;
+        border: none;
+        outline: none;
+        color: var(--text);
+        font-family: var(--mono);
+        font-size: 0.8rem;
+        flex: 1;
+        min-width: 0;
+      }
+
+      .input-group input::placeholder {
+        color: var(--muted);
+      }
+
+      .btn {
+        padding: 0.6rem 1.2rem;
+        border-radius: 8px;
+        font-family: var(--mono);
+        font-size: 0.75rem;
+        font-weight: 600;
+        cursor: pointer;
+        border: none;
+        letter-spacing: 0.05em;
+        transition: all 0.15s;
+        white-space: nowrap;
+      }
+
+      .btn-primary {
+        background: var(--accent);
+        color: #0a0a0f;
+      }
+
+      .btn-primary:hover {
+        background: #00e07a;
+        box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
+      }
+
+      .btn-primary:disabled {
+        background: var(--muted);
+        cursor: not-allowed;
+        box-shadow: none;
+      }
+
+      .btn-danger {
+        background: var(--red-dim);
+        color: var(--red);
+        border: 1px solid rgba(255, 59, 92, 0.3);
+      }
+
+      .btn-danger:hover {
+        background: rgba(255, 59, 92, 0.2);
+        box-shadow: 0 0 20px rgba(255, 59, 92, 0.2);
+      }
+
+      .btn-ghost {
+        background: transparent;
+        color: var(--muted);
+        border: 1px solid var(--border);
+      }
+
+      .btn-ghost:hover {
+        color: var(--text);
+        border-color: var(--muted);
+      }
+
+      /* progress bar */
+      .hammer-progress {
+        display: none;
+        align-items: center;
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+        padding: 0.75rem 1rem;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+      }
+
+      .hammer-progress.active {
+        display: flex;
+      }
+
+      .progress-bar-wrap {
+        flex: 1;
+        height: 4px;
+        background: var(--border);
+        border-radius: 2px;
+        overflow: hidden;
+      }
+
+      .progress-bar-fill {
+        height: 100%;
+        background: var(--accent);
+        border-radius: 2px;
+        transition: width 0.1s;
+        width: 0%;
+      }
+
+      .progress-text {
+        font-size: 0.7rem;
+        color: var(--muted);
+        white-space: nowrap;
+      }
+
+      /* log stream */
+      .hammer-log {
+        display: none;
+        flex-direction: column;
+        gap: 0.2rem;
+        margin-bottom: 1rem;
+        max-height: 120px;
+        overflow-y: auto;
+        padding: 0.75rem;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+      }
+
+      .hammer-log.active {
+        display: flex;
+      }
+
+      .log-entry {
+        font-size: 0.68rem;
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+        animation: slide-in 0.15s ease;
+      }
+
+      @keyframes slide-in {
+        from {
+          opacity: 0;
+          transform: translateX(-8px);
+        }
+        to {
+          opacity: 1;
+          transform: translateX(0);
+        }
+      }
+
+      .log-entry .log-status {
+        font-weight: 700;
+        width: 32px;
+      }
+      .log-entry.ok .log-status {
+        color: var(--accent);
+      }
+      .log-entry.dropped .log-status {
+        color: var(--red);
+      }
+      .log-entry .log-req {
+        color: var(--muted);
+      }
+      .log-entry .log-time {
+        color: var(--muted);
+        margin-left: auto;
+      }
+
+      /* main content */
+      .content-grid {
+        display: grid;
+        grid-template-columns: 1fr 300px;
+        gap: 1rem;
+      }
+
+      .panel {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        overflow: hidden;
+      }
+
+      .panel-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .panel-title {
+        font-family: var(--sans);
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: var(--text);
+        letter-spacing: -0.01em;
+      }
+
+      .panel-count {
+        font-size: 0.65rem;
+        color: var(--muted);
+        background: var(--border);
+        padding: 0.2rem 0.5rem;
+        border-radius: 4px;
+      }
+
+      /* table */
+      .table-wrap {
+        overflow-x: auto;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.72rem;
+      }
+
+      thead th {
+        padding: 0.6rem 1.25rem;
+        text-align: left;
+        font-size: 0.6rem;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--muted);
+        border-bottom: 1px solid var(--border);
+        white-space: nowrap;
+      }
+
+      tbody tr {
+        border-bottom: 1px solid rgba(30, 30, 46, 0.6);
+        transition: background 0.1s;
+      }
+
+      tbody tr:hover {
+        background: rgba(255, 255, 255, 0.02);
+      }
+      tbody tr:last-child {
+        border-bottom: none;
+      }
+
+      tbody td {
+        padding: 0.65rem 1.25rem;
+        color: var(--text);
+        white-space: nowrap;
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        padding: 0.2rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.62rem;
+        font-weight: 600;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+      }
+
+      .badge-red {
+        background: var(--red-dim);
+        color: var(--red);
+        border: 1px solid rgba(255, 59, 92, 0.2);
+      }
+      .badge-yellow {
+        background: var(--yellow-dim);
+        color: var(--yellow);
+        border: 1px solid rgba(255, 204, 0, 0.2);
+      }
+      .badge-blue {
+        background: var(--blue-dim);
+        color: var(--blue);
+        border: 1px solid rgba(59, 130, 246, 0.2);
+      }
+
+      .method-get {
+        color: var(--accent);
+      }
+      .method-post {
+        color: var(--blue);
+      }
+
+      .ts {
+        color: var(--muted);
+        font-size: 0.65rem;
+      }
+
+      .empty-state {
+        padding: 3rem;
+        text-align: center;
+        color: var(--muted);
+        font-size: 0.75rem;
+      }
+
+      .empty-state .empty-icon {
+        font-size: 2rem;
+        margin-bottom: 0.5rem;
+      }
+
+      /* reasons panel */
+      .reasons-list {
+        padding: 1rem 1.25rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+      }
+
+      .reason-item {
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+      }
+
+      .reason-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .reason-name {
+        font-size: 0.7rem;
+        color: var(--text);
+      }
+
+      .reason-count {
+        font-size: 0.7rem;
+        font-weight: 700;
+      }
+
+      .reason-bar {
+        height: 3px;
+        border-radius: 2px;
+        background: var(--border);
+        overflow: hidden;
+      }
+
+      .reason-bar-fill {
+        height: 100%;
+        border-radius: 2px;
+        transition: width 0.5s ease;
+      }
+
+      .error-banner {
+        display: none;
+        padding: 0.6rem 1rem;
+        background: var(--red-dim);
+        border: 1px solid rgba(255, 59, 92, 0.3);
+        border-radius: 8px;
+        font-size: 0.72rem;
+        color: var(--red);
+        margin-bottom: 1rem;
+      }
+
+      .error-banner.show {
+        display: block;
+      }
+
+      /* scrollbar */
+      ::-webkit-scrollbar {
+        width: 4px;
+        height: 4px;
+      }
+      ::-webkit-scrollbar-track {
+        background: var(--bg);
+      }
+      ::-webkit-scrollbar-thumb {
+        background: var(--border);
+        border-radius: 2px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <div class="logo">
+          <div class="logo-icon">⬡</div>
+          <div class="logo-text">
+            <h1>RateLimiter</h1>
+            <span>Observability Dashboard</span>
+          </div>
+        </div>
+        <div class="header-right">
+          <div class="live-badge">
+            <div class="live-dot"></div>
+            Live
+          </div>
+          <div class="refresh-info" id="lastUpdated">—</div>
+        </div>
+      </header>
+
+      <!-- stats -->
+      <div class="stats-grid">
+        <div class="stat-card green">
+          <div class="stat-label">Total Dropped</div>
+          <div class="stat-value" id="statTotal">—</div>
+          <div class="stat-sub">all time</div>
+        </div>
+        <div class="stat-card red">
+          <div class="stat-label">Rate Limited</div>
+          <div class="stat-value" id="statRateLimited">—</div>
+          <div class="stat-sub">bucket overflow</div>
+        </div>
+        <div class="stat-card yellow">
+          <div class="stat-label">Invalid Keys</div>
+          <div class="stat-value" id="statInvalidKey">—</div>
+          <div class="stat-sub">bad or missing key</div>
+        </div>
+        <div class="stat-card blue">
+          <div class="stat-label">Last Drop</div>
+          <div
+            class="stat-value"
+            id="statLastDrop"
+            style="font-size: 1rem; padding-top: 0.5rem"
+          >
+            —
+          </div>
+          <div class="stat-sub">most recent</div>
+        </div>
+      </div>
+
+      <!-- error banner -->
+      <div class="error-banner" id="errorBanner"></div>
+
+      <!-- hammer bar -->
+      <div class="actions-bar">
+        <div class="input-group">
+          <label>API KEY</label>
+          <input
+            type="text"
+            id="apiKeyInput"
+            placeholder="paste your api key here"
+          />
+        </div>
+        <div class="input-group" style="flex: 0; min-width: 160px">
+          <label>REQUESTS</label>
+          <input
+            type="number"
+            id="hammerCount"
+            value="25"
+            min="1"
+            max="100"
+            style="width: 50px"
+          />
+        </div>
+        <button class="btn btn-danger" id="hammerBtn" onclick="hammer()">
+          ⚡ Hammer
+        </button>
+        <button class="btn btn-ghost" onclick="refresh()">↻ Refresh</button>
+      </div>
+
+      <!-- hammer progress -->
+      <div class="hammer-progress" id="hammerProgress">
+        <span style="font-size: 0.7rem; color: var(--muted)">Hammering</span>
+        <div class="progress-bar-wrap">
+          <div class="progress-bar-fill" id="progressFill"></div>
+        </div>
+        <span class="progress-text" id="progressText">0 / 0</span>
+      </div>
+
+      <!-- hammer log -->
+      <div class="hammer-log" id="hammerLog"></div>
+
+      <!-- main content -->
+      <div class="content-grid">
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">Dropped Requests</div>
+            <div class="panel-count" id="tableCount">0 entries</div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Client</th>
+                  <th>Method</th>
+                  <th>Endpoint</th>
+                  <th>Reason</th>
+                  <th>Timestamp</th>
+                </tr>
+              </thead>
+              <tbody id="tableBody">
+                <tr>
+                  <td colspan="6">
+                    <div class="empty-state">
+                      <div class="empty-icon">📭</div>
+                      Loading...
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">Drop Reasons</div>
+          </div>
+          <div class="reasons-list" id="reasonsList">
+            <div style="color: var(--muted); font-size: 0.72rem">
+              Loading...
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const API = "http://localhost:8000"
+
+      const reasonColors = {
+        rate_limited: { bar: "#ff3b5c", badge: "badge-red" },
+        invalid_key: { bar: "#ffcc00", badge: "badge-yellow" },
+        missing_key: { bar: "#3b82f6", badge: "badge-blue" },
+      }
+
+      function fmtTime(iso) {
+        const d = new Date(iso)
+        return (
+          d.toLocaleTimeString("en-US", { hour12: false }) +
+          "." +
+          String(d.getMilliseconds()).padStart(3, "0")
+        )
+      }
+
+      function fmtRelative(iso) {
+        const diff = Math.floor((Date.now() - new Date(iso)) / 1000)
+        if (diff < 60) return `${diff}s ago`
+        if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
+        return `${Math.floor(diff / 3600)}h ago`
+      }
+
+      function showError(msg) {
+        const b = document.getElementById("errorBanner")
+        b.textContent = "⚠ " + msg
+        b.classList.add("show")
+        setTimeout(() => b.classList.remove("show"), 5000)
+      }
+
+      async function fetchDropped() {
+        const res = await fetch(`${API}/dashboard/dropped?limit=50`)
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        return res.json()
+      }
+
+      async function fetchStats() {
+        const res = await fetch(`${API}/dashboard/stats`)
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        return res.json()
+      }
+
+      function renderTable(data) {
+        const tbody = document.getElementById("tableBody")
+        document.getElementById("tableCount").textContent =
+          `${data.total} entries`
+
+        if (!data.requests.length) {
+          tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><div class="empty-icon">✅</div>No dropped requests yet. Hammer to test.</div></td></tr>`
+          return
+        }
+
+        tbody.innerHTML = data.requests
+          .map((r) => {
+            const rc = reasonColors[r.reason] || { badge: "badge-blue" }
+            const methodClass =
+              r.method === "GET" ? "method-get" : "method-post"
+            return `
+        <tr>
+          <td style="color:var(--muted)">${r.id}</td>
+          <td>${r.client_id ?? '<span style="color:var(--muted)">—</span>'}</td>
+          <td class="${methodClass}">${r.method}</td>
+          <td>${r.endpoint}</td>
+          <td><span class="badge ${rc.badge}">${r.reason.replace("_", " ")}</span></td>
+          <td class="ts" title="${r.created_at}">${fmtTime(r.created_at)}</td>
+        </tr>`
+          })
+          .join("")
+      }
+
+      function renderStats(stats, total, dropped) {
+        const byReason = stats.by_reason || {}
+        const max = Math.max(...Object.values(byReason), 1)
+
+        // stat cards
+        document.getElementById("statTotal").textContent = total
+        document.getElementById("statRateLimited").textContent =
+          byReason.rate_limited || 0
+        document.getElementById("statInvalidKey").textContent =
+          (byReason.invalid_key || 0) + (byReason.missing_key || 0)
+
+        if (dropped.length) {
+          document.getElementById("statLastDrop").textContent = fmtRelative(
+            dropped[0].created_at,
+          )
+        }
+
+        // reasons bars
+        const list = document.getElementById("reasonsList")
+        if (!Object.keys(byReason).length) {
+          list.innerHTML = `<div style="color:var(--muted); font-size:0.72rem;">No data yet.</div>`
+          return
+        }
+
+        list.innerHTML = Object.entries(byReason)
+          .map(([reason, count]) => {
+            const rc = reasonColors[reason] || { bar: "#3b82f6" }
+            const pct = Math.round((count / max) * 100)
+            return `
+        <div class="reason-item">
+          <div class="reason-row">
+            <span class="reason-name">${reason.replace(/_/g, " ")}</span>
+            <span class="reason-count" style="color:${rc.bar}">${count}</span>
+          </div>
+          <div class="reason-bar">
+            <div class="reason-bar-fill" style="width:${pct}%; background:${rc.bar}"></div>
+          </div>
+        </div>`
+          })
+          .join("")
+      }
+
+      async function refresh() {
+        try {
+          const [dropped, stats] = await Promise.all([
+            fetchDropped(),
+            fetchStats(),
+          ])
+          renderTable(dropped)
+          renderStats(stats, dropped.total, dropped.requests)
+          document.getElementById("lastUpdated").textContent =
+            "updated " +
+            new Date().toLocaleTimeString("en-US", { hour12: false })
+        } catch (e) {
+          showError("Cannot reach gateway at localhost:8000 — is it running?")
+        }
+      }
+
+      // hammer function
+      async function hammer() {
+        const key = document.getElementById("apiKeyInput").value.trim()
+        const count =
+          parseInt(document.getElementById("hammerCount").value) || 25
+
+        if (!key) {
+          showError("Paste your API key first.")
+          return
+        }
+
+        const btn = document.getElementById("hammerBtn")
+        const progress = document.getElementById("hammerProgress")
+        const log = document.getElementById("hammerLog")
+        const fill = document.getElementById("progressFill")
+        const progressText = document.getElementById("progressText")
+
+        btn.disabled = true
+        btn.textContent = "Hammering..."
+        progress.classList.add("active")
+        log.classList.add("active")
+        log.innerHTML = ""
+
+        let done = 0
+
+        const requests = Array.from({ length: count }, (_, i) =>
+          fetch(`${API}/data`, {
+            headers: { "X-API-Key": key },
+          })
+            .then(async (res) => {
+              done++
+              const pct = Math.round((done / count) * 100)
+              fill.style.width = pct + "%"
+              progressText.textContent = `${done} / ${count}`
+
+              const entry = document.createElement("div")
+              const isOk = res.status === 200
+              entry.className = `log-entry ${isOk ? "ok" : "dropped"}`
+              entry.innerHTML = `
+          <span class="log-status">${res.status}</span>
+          <span class="log-req">GET /data</span>
+          <span class="log-time">#${i + 1}</span>`
+              log.appendChild(entry)
+              log.scrollTop = log.scrollHeight
+            })
+            .catch(() => {
+              done++
+            }),
+        )
+
+        await Promise.all(requests)
+
+        btn.disabled = false
+        btn.textContent = "⚡ Hammer"
+
+        // wait a moment for stream consumer to persist, then refresh
+        setTimeout(refresh, 1500)
+      }
+
+      // auto refresh every 3 seconds
+      refresh()
+      setInterval(refresh, 3000)
+    </script>
+  </body>
+</html>

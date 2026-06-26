@@ -13,19 +13,15 @@ EXCLUDED_PATHS = [
     "/docs",
     "/openapi.json",
     "/redoc",
-    "/dashboard/dropped",
-    "/dashboard/stats",
+    "/dashboard",
+    "/static",
 ]
 
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
-
     async def dispatch(self, request: Request, call_next):
-
-        # skip auth and rate limiting for excluded paths
-        if request.url.path in EXCLUDED_PATHS:
+        if any(request.url.path.startswith(path) for path in EXCLUDED_PATHS):
             return await call_next(request)
-
         # 1. extract api key from header
         api_key = await api_key_header(request)
 

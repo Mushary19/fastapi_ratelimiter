@@ -8,8 +8,21 @@ from middleware import RateLimitMiddleware
 from routes import router
 
 app = FastAPI()
-app.add_middleware(RateLimitMiddleware)
 app.include_router(router)
+
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+app.add_middleware(RateLimitMiddleware)
+
+
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
 async def watchdog_consumer():
